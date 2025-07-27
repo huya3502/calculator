@@ -2,140 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Mario - Level 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>贪吃蛇 Snake Game</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    canvas { display: block; background: #87ceeb; margin: 0 auto; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #1e1e1e;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      border: 2px solid #fff;
+      margin-top: 30px;
+    }
+    h1 {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="960" height="480"></canvas>
+  <h1>贪吃蛇 Snake Game</h1>
+  <canvas id="game" width="400" height="400"></canvas>
 
   <script>
-    const canvas = document.getElementById("gameCanvas");
+    const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+    const box = 20;
+    const canvasSize = 20; // 20 x 20 grid
 
-    const keys = {};
-    const gravity = 0.5;
-    const friction = 0.9;
-
-    const player = {
-      x: 50,
-      y: 350,
-      width: 40,
-      height: 40,
-      color: "red",
-      vx: 0,
-      vy: 0,
-      speed: 4,
-      jumpPower: -12,
-      onGround: false
+    let snake = [{ x: 10, y: 10 }];
+    let food = {
+      x: Math.floor(Math.random() * canvasSize),
+      y: Math.floor(Math.random() * canvasSize)
     };
+    let direction = "RIGHT";
+    let score = 0;
 
-    const platforms = [
-      { x: 0, y: 440, width: 960, height: 40 },
-      { x: 150, y: 350, width: 100, height: 20 },
-      { x: 300, y: 280, width: 100, height: 20 },
-      { x: 480, y: 220, width: 100, height: 20 },
-      { x: 650, y: 150, width: 100, height: 20 },
-      { x: 800, y: 100, width: 100, height: 20 }
-    ];
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+      else if (e.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+      else if (e.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+      else if (e.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
+    });
 
-    const flag = {
-      x: 850,
-      y: 40,
-      width: 10,
-      height: 60,
-      color: "black"
-    };
+    function draw() {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    document.addEventListener("keydown", e => keys[e.code] = true);
-    document.addEventListener("keyup", e => keys[e.code] = false);
-
-    function update() {
-      player.vx = 0;
-
-      if (keys["ArrowLeft"] || keys["KeyA"]) player.vx = -player.speed;
-      if (keys["ArrowRight"] || keys["KeyD"]) player.vx = player.speed;
-
-      if ((keys["ArrowUp"] || keys["KeyW"] || keys["Space"]) && player.onGround) {
-        player.vy = player.jumpPower;
-        player.onGround = false;
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#0f0" : "#0c0";
+        ctx.fillRect(snake[i].x * box, snake[i].y * box, box, box);
       }
 
-      player.vy += gravity;
-      player.x += player.vx;
-      player.y += player.vy;
+      ctx.fillStyle = "#f00";
+      ctx.fillRect(food.x * box, food.y * box, box, box);
 
-      player.onGround = false;
-      for (let p of platforms) {
-        if (player.x < p.x + p.width && player.x + player.width > p.x &&
-            player.y < p.y + p.height && player.y + player.height > p.y) {
-          if (player.vy > 0 && player.y + player.height - player.vy <= p.y) {
-            player.y = p.y - player.height;
-            player.vy = 0;
-            player.onGround = true;
-          }
-        }
-      }
+      let head = { ...snake[0] };
+      if (direction === "UP") head.y--;
+      if (direction === "DOWN") head.y++;
+      if (direction === "LEFT") head.x--;
+      if (direction === "RIGHT") head.x++;
 
-      // Prevent falling off screen
-      if (player.y > canvas.height) {
-        player.x = 50;
-        player.y = 350;
-        player.vy = 0;
-      }
-    }
-
-    function drawPlatforms() {
-      ctx.fillStyle = "#654321";
-      for (let p of platforms) {
-        ctx.fillRect(p.x, p.y, p.width, p.height);
-      }
-    }
-
-    function drawPlayer() {
-      ctx.fillStyle = player.color;
-      ctx.fillRect(player.x, player.y, player.width, player.height);
-    }
-
-    function drawFlag() {
-      ctx.fillStyle = flag.color;
-      ctx.fillRect(flag.x, flag.y, flag.width, flag.height);
-      ctx.beginPath();
-      ctx.moveTo(flag.x + flag.width, flag.y);
-      ctx.lineTo(flag.x + 30, flag.y + 10);
-      ctx.lineTo(flag.x + flag.width, flag.y + 20);
-      ctx.closePath();
-      ctx.fillStyle = "red";
-      ctx.fill();
-    }
-
-    function checkWin() {
+      // 撞墙或咬自己就结束
       if (
-        player.x < flag.x + flag.width &&
-        player.x + player.width > flag.x &&
-        player.y < flag.y + flag.height &&
-        player.y + player.height > flag.y
+        head.x < 0 || head.x >= canvasSize ||
+        head.y < 0 || head.y >= canvasSize ||
+        snake.some(segment => segment.x === head.x && segment.y === head.y)
       ) {
-        alert("🎉 恭喜通关！");
-        player.x = 50;
-        player.y = 350;
-        player.vy = 0;
+        clearInterval(game);
+        alert("游戏结束！得分: " + score);
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        food = {
+          x: Math.floor(Math.random() * canvasSize),
+          y: Math.floor(Math.random() * canvasSize)
+        };
+      } else {
+        snake.pop();
       }
     }
 
-    function loop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      update();
-      drawPlatforms();
-      drawPlayer();
-      drawFlag();
-      checkWin();
-      requestAnimationFrame(loop);
-    }
-
-    loop();
+    const game = setInterval(draw, 150);
   </script>
 </body>
 </html>
