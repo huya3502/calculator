@@ -2,68 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Mini Mario</title>
+  <title>Mario - Level 1</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     canvas { display: block; background: #87ceeb; margin: 0 auto; }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <canvas id="gameCanvas" width="960" height="480"></canvas>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
     const keys = {};
-    let gravity = 0.5;
+    const gravity = 0.5;
+    const friction = 0.9;
 
     const player = {
       x: 50,
-      y: 300,
+      y: 350,
       width: 40,
       height: 40,
       color: "red",
-      velocityY: 0,
+      vx: 0,
+      vy: 0,
+      speed: 4,
+      jumpPower: -12,
       onGround: false
     };
 
-    const ground = {
-      x: 0,
-      y: 350,
-      width: canvas.width,
-      height: 50,
-      color: "green"
+    const platforms = [
+      { x: 0, y: 440, width: 960, height: 40 },
+      { x: 150, y: 350, width: 100, height: 20 },
+      { x: 300, y: 280, width: 100, height: 20 },
+      { x: 480, y: 220, width: 100, height: 20 },
+      { x: 650, y: 150, width: 100, height: 20 },
+      { x: 800, y: 100, width: 100, height: 20 }
+    ];
+
+    const flag = {
+      x: 850,
+      y: 40,
+      width: 10,
+      height: 60,
+      color: "black"
     };
 
-    document.addEventListener("keydown", (e) => {
-      keys[e.code] = true;
-    });
-
-    document.addEventListener("keyup", (e) => {
-      keys[e.code] = false;
-    });
+    document.addEventListener("keydown", e => keys[e.code] = true);
+    document.addEventListener("keyup", e => keys[e.code] = false);
 
     function update() {
-      // Left / Right movement
-      if (keys["ArrowLeft"] || keys["KeyA"]) player.x -= 5;
-      if (keys["ArrowRight"] || keys["KeyD"]) player.x += 5;
+      player.vx = 0;
 
-      // Jump
-      if ((keys["ArrowUp"] || keys["Space"] || keys["KeyW"]) && player.onGround) {
-        player.velocityY = -12;
+      if (keys["ArrowLeft"] || keys["KeyA"]) player.vx = -player.speed;
+      if (keys["ArrowRight"] || keys["KeyD"]) player.vx = player.speed;
+
+      if ((keys["ArrowUp"] || keys["KeyW"] || keys["Space"]) && player.onGround) {
+        player.vy = player.jumpPower;
         player.onGround = false;
       }
 
-      // Gravity
-      player.velocityY += gravity;
-      player.y += player.velocityY;
+      player.vy += gravity;
+      player.x += player.vx;
+      player.y += player.vy;
 
-      // Ground collision
-      if (player.y + player.height > ground.y) {
-        player.y = ground.y - player.height;
-        player.velocityY = 0;
-        player.onGround = true;
+      player.onGround = false;
+      for (let p of platforms) {
+        if (player.x < p.x + p.width && player.x + player.width > p.x &&
+            player.y < p.y + p.height && player.y + player.height > p.y) {
+          if (player.vy > 0 && player.y + player.height - player.vy <= p.y) {
+            player.y = p.y - player.height;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+      }
+
+      // Prevent falling off screen
+      if (player.y > canvas.height) {
+        player.x = 50;
+        player.y = 350;
+        player.vy = 0;
+      }
+    }
+
+    function drawPlatforms() {
+      ctx.fillStyle = "#654321";
+      for (let p of platforms) {
+        ctx.fillRect(p.x, p.y, p.width, p.height);
       }
     }
 
@@ -72,20 +99,43 @@
       ctx.fillRect(player.x, player.y, player.width, player.height);
     }
 
-    function drawGround() {
-      ctx.fillStyle = ground.color;
-      ctx.fillRect(ground.x, ground.y, ground.width, ground.height);
+    function drawFlag() {
+      ctx.fillStyle = flag.color;
+      ctx.fillRect(flag.x, flag.y, flag.width, flag.height);
+      ctx.beginPath();
+      ctx.moveTo(flag.x + flag.width, flag.y);
+      ctx.lineTo(flag.x + 30, flag.y + 10);
+      ctx.lineTo(flag.x + flag.width, flag.y + 20);
+      ctx.closePath();
+      ctx.fillStyle = "red";
+      ctx.fill();
     }
 
-    function gameLoop() {
+    function checkWin() {
+      if (
+        player.x < flag.x + flag.width &&
+        player.x + player.width > flag.x &&
+        player.y < flag.y + flag.height &&
+        player.y + player.height > flag.y
+      ) {
+        alert("🎉 恭喜通关！");
+        player.x = 50;
+        player.y = 350;
+        player.vy = 0;
+      }
+    }
+
+    function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       update();
-      drawGround();
+      drawPlatforms();
       drawPlayer();
-      requestAnimationFrame(gameLoop);
+      drawFlag();
+      checkWin();
+      requestAnimationFrame(loop);
     }
 
-    gameLoop();
+    loop();
   </script>
 </body>
 </html>
